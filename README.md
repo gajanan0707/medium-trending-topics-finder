@@ -117,11 +117,11 @@ The UI is built with a cohesive, tactile claymorphism aesthetic:
 
 ## 🔐 Permissions & Privacy
 
-This extension complies strictly with Manifest V3 and requires minimal permissions:
+This extension complies strictly with Manifest V3 and follows the principle of least privilege:
 
-- `host_permissions: ["https://medium.com/*"]`: Grants access to inspect article DOM nodes and inject the dashboard only on Medium pages.
-- `permissions: ["activeTab"]`: Allows launching tag URLs directly from the popup.
-- `permissions: ["storage"]`: Saves the latest scan summary locally (`chrome.storage.local`) so you can preview top stories in the extension popup.
+- `permissions: ["storage"]`: Saves the latest scan summary locally (`chrome.storage.local`) so you can preview top stories in the extension popup. No data ever leaves your device.
+- `content_scripts`: Statically declared to match only `https://medium.com/tag/*` and `https://medium.com/` to inspect publicly visible story previews (titles, claps, responses) and inject the local overlay panel.
+- **Audited Least Privilege**: Does not request `activeTab`, `host_permissions`, `tabs`, cookies, background workers, or external network access.
 - **Privacy Guarantee**: No data, browsing history, or identifiers are transmitted externally. Everything is processed purely inside your local browser tab.
 
 ---

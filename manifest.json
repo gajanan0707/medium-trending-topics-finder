@@ -2,16 +2,12 @@
   "manifest_version": 3,
   "name": "Medium Trending Topics Finder",
   "short_name": "Medium Topics Finder",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Discover trending Medium articles and high-opportunity topics ranked by claps, comments, and engagement velocity—100% local.",
   "homepage_url": "https://medium-trending-topics-finder.vercel.app/",
   "author": "Medium Trending Topics Finder Team",
   "permissions": [
-    "activeTab",
     "storage"
-  ],
-  "host_permissions": [
-    "https://medium.com/*"
   ],
   "content_security_policy": {
     "extension_pages": "script-src 'self'; object-src 'self'; img-src 'self' data:;"
