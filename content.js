@@ -31,10 +31,29 @@
         }
     }
 
-    function setScanningUI(active) {
+    function setScanningUI(active, titleText, subText) {
         isScanning = active;
         const panel = document.getElementById('mtr-radar-panel');
         if (!panel) return;
+
+        const loaderBox = document.getElementById('mtr-loader-box');
+        if (loaderBox) {
+            if (active) {
+                loaderBox.classList.remove('is-hidden');
+                if (titleText) {
+                    const titleEl = document.getElementById('mtr-loader-title');
+                    if (titleEl) {
+                        titleEl.innerHTML = `<span>${titleText}</span><span class="mtr-radar-beacon" style="display:inline-flex;"><span class="mtr-radar-beacon-ring"></span><span class="mtr-radar-beacon-dot"></span></span>`;
+                    }
+                }
+                if (subText) {
+                    const subEl = document.getElementById('mtr-loader-sub');
+                    if (subEl) subEl.textContent = subText;
+                }
+            } else {
+                loaderBox.classList.add('is-hidden');
+            }
+        }
 
         const rescanBtn = document.getElementById('mtr-rescan-btn');
         if (rescanBtn) {
@@ -194,8 +213,10 @@
         }
 
         const listEl = document.getElementById('mtr-story-list');
+        const loaderBox = document.getElementById('mtr-loader-box');
 
         if (isScanning && currentStories.length === 0) {
+            if (loaderBox) loaderBox.classList.remove('is-hidden');
             renderSkeletonCards(listEl, 4);
             return;
         }
@@ -215,6 +236,7 @@
         listEl.innerHTML = '';
 
         if (sorted.length === 0) {
+            if (loaderBox && !isScanning) loaderBox.classList.add('is-hidden');
             listEl.innerHTML = `<div class="mtr-story-card" style="justify-content:center;color:#5c6b73;padding:22px;text-align:center;">
                 <div>
                     <div style="font-weight:700;color:#1e293b;margin-bottom:4px;">No stories detected yet</div>
@@ -222,6 +244,9 @@
                 </div>
             </div>`;
         } else {
+            // Original data loaded and verified: hide loader smoothly
+            if (loaderBox) loaderBox.classList.add('is-hidden');
+
             sorted.slice(0, 15).forEach((story, idx) => {
                 const card = document.createElement('div');
                 card.className = 'mtr-story-card';
@@ -260,7 +285,18 @@
     }
 
     function runScan(isManual = false) {
-        setScanningUI(true);
+        const tag = getCurrentTagSlug();
+        const listEl = document.getElementById('mtr-story-list');
+
+        setScanningUI(
+            true,
+            isManual ? `Rescanning #${tag} Feed...` : `Analyzing & Ranking #${tag} Stories...`,
+            isManual ? 'Recalculating claps, responses, and engagement rankings...' : 'Reading claps, responses, and calculating engagement velocity...'
+        );
+
+        if (isManual && listEl) {
+            renderSkeletonCards(listEl, 4);
+        }
 
         const executeExtract = () => {
             currentStories = extractStoriesFromDOM();
@@ -269,7 +305,7 @@
         };
 
         if (isManual) {
-            setTimeout(executeExtract, 450);
+            setTimeout(executeExtract, 600);
         } else {
             executeExtract();
         }
@@ -338,6 +374,26 @@
                     <div class="mtr-kpi-val" id="mtr-kpi-comments">0</div>
                 </div>
             </div>
+            <div class="mtr-loader-box" id="mtr-loader-box">
+                <div class="mtr-loader-top">
+                    <div class="mtr-loader-orb-wrap">
+                        <div class="mtr-loader-spinner-ring"></div>
+                    </div>
+                    <div class="mtr-loader-info">
+                        <div class="mtr-loader-title" id="mtr-loader-title">
+                            <span>Analyzing & Ranking Stories...</span>
+                            <span class="mtr-radar-beacon" style="display:inline-flex;">
+                                <span class="mtr-radar-beacon-ring"></span>
+                                <span class="mtr-radar-beacon-dot"></span>
+                            </span>
+                        </div>
+                        <p class="mtr-loader-sub" id="mtr-loader-sub">Reading claps, responses, and calculating engagement velocity...</p>
+                    </div>
+                </div>
+                <div class="mtr-loader-track">
+                    <div class="mtr-loader-bar"></div>
+                </div>
+            </div>
             <div class="mtr-story-list" id="mtr-story-list"></div>
         `;
 
@@ -348,13 +404,27 @@
         document.getElementById('mtr-export-btn').addEventListener('click', exportCSV);
 
         const listEl = document.getElementById('mtr-story-list');
-        setScanningUI(true);
+        const tag = getCurrentTagSlug();
+        setScanningUI(true, `Analyzing & Ranking #${tag} Stories...`, 'Reading claps, responses, and calculating engagement velocity...');
         renderSkeletonCards(listEl, 4);
 
-        runScan();
-        // Catch async hydration after initial render
-        setTimeout(() => runScan(), 1200);
-        setTimeout(() => runScan(), 2500);
+        let initialAttempts = 0;
+        const maxInitialAttempts = 6;
+
+        function attemptHydrationScan() {
+            initialAttempts++;
+            const extracted = extractStoriesFromDOM();
+            if (extracted.length > 0 || initialAttempts >= maxInitialAttempts) {
+                currentStories = extracted;
+                setScanningUI(false);
+                renderPanel();
+            } else {
+                setScanningUI(true, `Scanning #${getCurrentTagSlug()} Feed...`, 'Waiting for Medium stories to load & calculating rankings...');
+                setTimeout(attemptHydrationScan, 600);
+            }
+        }
+
+        setTimeout(attemptHydrationScan, 400);
 
         const observer = new MutationObserver((mutations) => {
             const addedOutsidePanel = mutations.some(m => !m.target.closest?.('#mtr-radar-panel') && m.addedNodes.length > 0);
