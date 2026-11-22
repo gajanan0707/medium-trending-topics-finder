@@ -1,8 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Medium Trending Radar",
+  "name": "Medium Trending Topics Finder",
+  "short_name": "Medium Topics Finder",
   "version": "1.0.0",
   "description": "Discover trending Medium articles and high-opportunity topics ranked by claps, comments, and engagement velocity—100% local.",
+  "homepage_url": "https://mediumradar.app",
+  "author": "Medium Trending Topics Finder Team",
   "permissions": [
     "activeTab",
     "storage"
@@ -25,7 +28,7 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Medium Trending Radar"
+    "default_title": "Medium Trending Topics Finder"
   },
   "icons": {
     "16": "icon16.png",

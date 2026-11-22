@@ -1,4 +1,4 @@
-// Medium Trending Radar - Soft 3D Content Script (Universal DOM + SPA Observer)
+// Medium Trending Topics Finder - Soft 3D Content Script (Universal DOM + SPA Observer)
 (function () {
     'use strict';
 
@@ -187,7 +187,7 @@
         const titleEl = container.querySelector('.mtr-title-group h2');
         if (titleEl) {
             const badge = titleEl.querySelector('.mtr-scanning-badge');
-            titleEl.textContent = `Medium Trending Radar — #${getCurrentTagSlug()}`;
+            titleEl.textContent = `Medium Trending Topics Finder — #${getCurrentTagSlug()}`;
             if (badge && isScanning) {
                 titleEl.appendChild(badge);
             }
@@ -306,7 +306,7 @@
                 <div class="mtr-brand-wrap">
                     <div class="mtr-3d-orb"></div>
                     <div class="mtr-title-group">
-                        <h2>Medium Trending Radar — #${getCurrentTagSlug()}</h2>
+                        <h2>Medium Trending Topics Finder — #${getCurrentTagSlug()}</h2>
                         <p>Ranked by claps, comments, and engagement velocity</p>
                     </div>
                 </div>
