@@ -3,7 +3,7 @@
   "name": "Medium Trending Topics Finder",
   "short_name": "Medium Topics Finder",
   "version": "1.0.2",
-  "description": "Discover trending Medium articles, top publications, and top writers ranked by claps, comments, followers, and engagement—100% local.",
+  "description": "Discover trending Medium articles, top publications, and top writers local.",
   "homepage_url": "https://medium-trending-topics-finder.vercel.app/",
   "author": "Medium Trending Topics Finder Team",
   "permissions": [
