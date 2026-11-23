@@ -1,10 +1,7 @@
-/* Medium Trending Radar — Soft 3D Tactile Claymorphism UI */
+/* Medium Trending Topics Finder — Soft 3D Claymorphism + Shimmer Loader */
 :root {
     --clay-cream: #f7f1e8;
     --clay-cream-card: #fbf7f1;
-    --clay-mint: #cde8d9;
-    --clay-teal: #a9d1da;
-    --clay-peach: #f4d8c4;
     --clay-ink: #1e293b;
     --clay-muted: #5c6b73;
     --clay-accent: #2f7d6d;
@@ -33,14 +30,13 @@
     -webkit-font-smoothing: antialiased;
 }
 
-/* Header */
 .mtr-header {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: 14px;
-    margin-bottom: 20px;
+    margin-bottom: 16px;
 }
 
 .mtr-brand-wrap {
@@ -49,7 +45,6 @@
     gap: 14px;
 }
 
-/* Concentric 3D Orb inspired by Soft 3D UI */
 .mtr-3d-orb {
     width: 48px;
     height: 48px;
@@ -59,7 +54,6 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    position: relative;
     flex-shrink: 0;
 }
 
@@ -105,16 +99,12 @@
     cursor: pointer;
     font-family: inherit;
     box-shadow: var(--clay-shadow-pill);
-    transition: transform 0.16s ease, box-shadow 0.16s ease;
+    transition: transform 0.16s ease;
 }
 
 .mtr-btn:hover,
 .mtr-select:hover {
     transform: translateY(-2px);
-}
-
-.mtr-btn:active {
-    transform: translateY(1px);
 }
 
 .mtr-btn-primary {
@@ -124,7 +114,38 @@
     box-shadow: 0 10px 20px -6px rgba(38, 108, 93, 0.45), inset 2px 2px 4px rgba(255, 255, 255, 0.35);
 }
 
-/* Soft 3D Bento KPI Row */
+/* Soft 3D Tabs */
+.mtr-tabs {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    background: rgba(255, 255, 255, 0.55);
+    padding: 6px;
+    border-radius: 999px;
+    box-shadow: inset 2px 2px 6px rgba(145, 160, 155, 0.16);
+    margin-bottom: 18px;
+}
+
+.mtr-tab-btn {
+    border: none;
+    background: transparent;
+    color: var(--clay-muted);
+    border-radius: 999px;
+    padding: 8px 15px;
+    font-size: 12.5px;
+    font-weight: 700;
+    cursor: pointer;
+    font-family: inherit;
+    transition: all 0.16s ease;
+}
+
+.mtr-tab-btn.active {
+    background: var(--clay-cream-card);
+    color: var(--clay-ink);
+    box-shadow: var(--clay-shadow-pill);
+}
+
+/* KPI Row */
 .mtr-kpi-row {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
@@ -138,26 +159,11 @@
     padding: 16px 18px;
     box-shadow: var(--clay-shadow-card);
     border: 1px solid rgba(255, 255, 255, 0.85);
-    position: relative;
-    overflow: hidden;
-    transition: transform 0.18s ease;
 }
 
-.mtr-kpi:hover {
-    transform: translateY(-2px);
-}
-
-.mtr-kpi.hero {
-    background: linear-gradient(135deg, #b5d8df 0%, #cbe6d8 100%);
-}
-
-.mtr-kpi.mint {
-    background: linear-gradient(135deg, #dff0e6 0%, #c8e6d5 100%);
-}
-
-.mtr-kpi.peach {
-    background: linear-gradient(135deg, #faece0 0%, #f4d9c6 100%);
-}
+.mtr-kpi.hero { background: linear-gradient(135deg, #b5d8df 0%, #cbe6d8 100%); }
+.mtr-kpi.mint { background: linear-gradient(135deg, #dff0e6 0%, #c8e6d5 100%); }
+.mtr-kpi.peach { background: linear-gradient(135deg, #faece0 0%, #f4d9c6 100%); }
 
 .mtr-kpi-label {
     font-size: 11.5px;
@@ -167,14 +173,14 @@
 }
 
 .mtr-kpi-val {
-    font-size: 26px;
+    font-size: 25px;
     font-weight: 800;
     color: var(--clay-ink);
     font-variant-numeric: tabular-nums;
     letter-spacing: -0.02em;
 }
 
-/* Ranked Story Cards (Soft 3D List) */
+/* Story / Pub / Writer Cards */
 .mtr-story-list {
     display: flex;
     flex-direction: column;
@@ -197,9 +203,7 @@
     transition: transform 0.16s ease;
 }
 
-.mtr-story-card:hover {
-    transform: translateY(-2px);
-}
+.mtr-story-card:hover { transform: translateY(-2px); }
 
 .mtr-story-left {
     display: flex;
@@ -249,6 +253,7 @@
     gap: 6px;
     font-size: 11px;
     color: var(--clay-muted);
+    font-weight: 600;
 }
 
 .mtr-story-stats {
@@ -273,267 +278,30 @@
     background: linear-gradient(135deg, #cde8d9, #a9d1da);
 }
 
+/* Shimmer Skeleton Loader */
+.mtr-skeleton-line,
+.mtr-skeleton-circle,
+.mtr-skeleton-pill {
+    background: linear-gradient(90deg, rgba(205, 218, 212, 0.45) 25%, rgba(255, 255, 255, 0.85) 50%, rgba(205, 218, 212, 0.45) 75%);
+    background-size: 200% 100%;
+    animation: mtrShimmer 1.3s infinite;
+    border-radius: 999px;
+}
+
+.mtr-skeleton-line.sm { height: 11px; width: 45%; }
+.mtr-skeleton-line.md { height: 15px; width: 72%; }
+.mtr-skeleton-line.lg { height: 26px; width: 62%; margin-top: 10px; }
+.mtr-skeleton-circle { width: 36px; height: 36px; border-radius: 50%; flex-shrink: 0; }
+.mtr-skeleton-pill { width: 68px; height: 28px; }
+
+@keyframes mtrShimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+}
+
 @media (max-width: 720px) {
     .mtr-story-card {
         flex-direction: column;
         align-items: flex-start;
     }
-}
-
-/* =========================================
-   Soft 3D Tactile Clay Radar Loader System
-   ========================================= */
-
-/* Soft 3D Scanning Badge in Header */
-.mtr-scanning-badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 11.5px;
-    font-weight: 700;
-    color: #1e4a40;
-    background: var(--clay-mint);
-    border: 1px solid rgba(255, 255, 255, 0.9);
-    padding: 4px 12px;
-    border-radius: 999px;
-    margin-left: 12px;
-    vertical-align: middle;
-    box-shadow: var(--clay-shadow-pill);
-}
-
-.mtr-radar-beacon {
-    position: relative;
-    width: 10px;
-    height: 10px;
-    display: inline-block;
-}
-
-.mtr-radar-beacon-dot {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 10px;
-    height: 10px;
-    background-color: var(--clay-accent);
-    border-radius: 50%;
-    box-shadow: 0 1px 3px rgba(38, 108, 93, 0.4);
-}
-
-.mtr-radar-beacon-ring {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 10px;
-    height: 10px;
-    background-color: rgba(47, 125, 109, 0.55);
-    border-radius: 50%;
-    animation: mtr-clay-beacon-ping 1.5s cubic-bezier(0, 0, 0.2, 1) infinite;
-}
-
-@keyframes mtr-clay-beacon-ping {
-    75%, 100% {
-        transform: scale(2.6);
-        opacity: 0;
-    }
-}
-
-/* Tactile Soft 3D Loader Container */
-.mtr-loader-box {
-    background: linear-gradient(135deg, #fbf7f1 0%, #edf5f0 100%);
-    border: 1px solid rgba(255, 255, 255, 0.95);
-    border-radius: 20px;
-    padding: 20px 24px;
-    margin-bottom: 18px;
-    box-shadow: var(--clay-shadow-pill);
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-    transition: opacity 0.35s ease, transform 0.35s ease, max-height 0.35s ease, margin 0.35s ease, padding 0.35s ease;
-    max-height: 200px;
-    overflow: hidden;
-}
-
-.mtr-loader-box.is-hidden {
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(-8px);
-    max-height: 0;
-    padding-top: 0;
-    padding-bottom: 0;
-    margin-bottom: 0;
-    border-color: transparent;
-}
-
-.mtr-loader-top {
-    display: flex;
-    align-items: center;
-    gap: 14px;
-}
-
-.mtr-loader-orb-wrap {
-    width: 42px;
-    height: 42px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #cde8d9, #a9d1da);
-    box-shadow: var(--clay-shadow-pill);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    position: relative;
-    flex-shrink: 0;
-}
-
-.mtr-loader-spinner-ring {
-    width: 22px;
-    height: 22px;
-    border-radius: 50%;
-    border: 3px solid rgba(38, 108, 93, 0.2);
-    border-top-color: #266c5d;
-    animation: mtr-clay-spin 0.75s linear infinite;
-}
-
-.mtr-loader-info {
-    flex: 1;
-}
-
-.mtr-loader-title {
-    font-size: 14.5px;
-    font-weight: 800;
-    color: var(--clay-ink);
-    margin: 0 0 3px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.mtr-loader-sub {
-    font-size: 12px;
-    color: var(--clay-muted);
-    margin: 0;
-}
-
-.mtr-loader-track {
-    width: 100%;
-    height: 6px;
-    border-radius: 999px;
-    background: #e3dfd7;
-    box-shadow: inset 1px 1px 3px rgba(145, 160, 155, 0.3);
-    overflow: hidden;
-    position: relative;
-}
-
-.mtr-loader-bar {
-    width: 40%;
-    height: 100%;
-    border-radius: 999px;
-    background: linear-gradient(90deg, #3c9d88, #88bec9, #3c9d88);
-    background-size: 200% 100%;
-    animation: mtr-loader-slide 1.3s ease-in-out infinite;
-}
-
-@keyframes mtr-loader-slide {
-    0% { transform: translateX(-100%); }
-    100% { transform: translateX(250%); }
-}
-
-.mtr-story-card {
-    animation: mtr-card-enter 0.25s ease-out both;
-}
-
-@keyframes mtr-card-enter {
-    from {
-        opacity: 0;
-        transform: translateY(6px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-/* Rescan Button Scanning Depressed State */
-.mtr-btn.is-scanning {
-    box-shadow: inset 2px 2px 5px rgba(56, 74, 70, 0.2), inset -2px -2px 4px rgba(255, 255, 255, 0.9);
-    transform: translateY(1px);
-    cursor: wait;
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-}
-
-.mtr-spinner {
-    width: 12px;
-    height: 12px;
-    border: 2px solid rgba(30, 41, 59, 0.2);
-    border-top-color: var(--clay-accent);
-    border-radius: 50%;
-    animation: mtr-clay-spin 0.7s linear infinite;
-    display: inline-block;
-}
-
-@keyframes mtr-clay-spin {
-    to { transform: rotate(360deg); }
-}
-
-/* Claymorphic Shimmer Skeleton Story Cards */
-.mtr-skeleton-card {
-    pointer-events: none;
-    opacity: 0.9;
-}
-
-.mtr-skeleton-orb {
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #e3dfd7, #d5deda);
-    box-shadow: var(--clay-shadow-pill);
-    flex-shrink: 0;
-    position: relative;
-    overflow: hidden;
-}
-
-.mtr-skeleton-orb::after,
-.mtr-skeleton-bar {
-    background: linear-gradient(90deg, #ede6dc 0%, rgba(169, 209, 218, 0.38) 50%, #ede6dc 100%);
-    background-size: 200% 100%;
-    animation: mtr-clay-shimmer 1.5s ease-in-out infinite;
-}
-
-.mtr-skeleton-orb::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-}
-
-.mtr-skeleton-bar {
-    border-radius: 999px;
-    box-shadow: inset 1px 1px 2px rgba(255, 255, 255, 0.8), inset -1px -1px 2px rgba(145, 160, 155, 0.15);
-}
-
-.mtr-skel-title {
-    width: 75%;
-    height: 15px;
-    margin-bottom: 7px;
-}
-
-.mtr-skel-tag {
-    width: 130px;
-    height: 11px;
-}
-
-.mtr-skel-pill {
-    width: 68px;
-    height: 28px;
-}
-
-.mtr-skel-pill.score {
-    width: 82px;
-}
-
-@keyframes mtr-clay-shimmer {
-    0% { background-position: 200% 0; }
-    100% { background-position: -200% 0; }
 }

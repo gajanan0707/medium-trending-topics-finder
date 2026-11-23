@@ -4,27 +4,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const listEl = document.getElementById('trending-list');
     const cacheTag = document.getElementById('cache-tag');
 
-    function showLoadingState(tag) {
-        cacheTag.textContent = tag ? `Scanning #${tag}...` : 'Scanning topic...';
-        listEl.innerHTML = '';
-        for (let i = 0; i < 3; i++) {
-            const item = document.createElement('div');
-            item.className = 'skeleton-story';
-            item.innerHTML = `
-                <div class="skeleton-bar skeleton-title"></div>
-                <div class="skeleton-bar skeleton-meta"></div>
-            `;
-            listEl.appendChild(item);
-        }
-    }
-
     function openTagPage(rawTag) {
         const slug = rawTag.trim().toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
         if (!slug) return;
-        showLoadingState(slug);
-        setTimeout(() => {
-            chrome.tabs.create({ url: `https://medium.com/tag/${slug}` });
-        }, 180);
+        chrome.tabs.create({ url: `https://medium.com/tag/${slug}` });
     }
 
     form.addEventListener('submit', (e) => {

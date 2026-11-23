@@ -1,94 +1,14 @@
-// Medium Trending Topics Finder - Soft 3D Content Script (Universal DOM + SPA Observer)
+// Medium Trending Topics Finder - Real Live DOM Scanner (Stories, Top Publications & Top Writers)
 (function () {
     'use strict';
 
     let currentStories = [];
+    let currentPublications = [];
+    let currentWriters = [];
+    let activeTab = 'stories';
+    let isLoading = true;
     let lastUrl = window.location.href;
     let rescanTimer = null;
-    let isScanning = false;
-
-    function renderSkeletonCards(listEl, count = 4) {
-        if (!listEl) return;
-        listEl.innerHTML = '';
-        for (let i = 0; i < count; i++) {
-            const card = document.createElement('div');
-            card.className = 'mtr-story-card mtr-skeleton-card';
-            card.innerHTML = `
-                <div class="mtr-story-left">
-                    <div class="mtr-skeleton-orb"></div>
-                    <div style="min-width:0; flex:1;">
-                        <div class="mtr-skeleton-bar mtr-skel-title"></div>
-                        <div class="mtr-skeleton-bar mtr-skel-tag"></div>
-                    </div>
-                </div>
-                <div class="mtr-story-stats">
-                    <div class="mtr-skeleton-bar mtr-skel-pill"></div>
-                    <div class="mtr-skeleton-bar mtr-skel-pill"></div>
-                    <div class="mtr-skeleton-bar mtr-skel-pill score"></div>
-                </div>
-            `;
-            listEl.appendChild(card);
-        }
-    }
-
-    function setScanningUI(active, titleText, subText) {
-        isScanning = active;
-        const panel = document.getElementById('mtr-radar-panel');
-        if (!panel) return;
-
-        const loaderBox = document.getElementById('mtr-loader-box');
-        if (loaderBox) {
-            if (active) {
-                loaderBox.classList.remove('is-hidden');
-                if (titleText) {
-                    const titleEl = document.getElementById('mtr-loader-title');
-                    if (titleEl) {
-                        titleEl.innerHTML = `<span>${titleText}</span><span class="mtr-radar-beacon" style="display:inline-flex;"><span class="mtr-radar-beacon-ring"></span><span class="mtr-radar-beacon-dot"></span></span>`;
-                    }
-                }
-                if (subText) {
-                    const subEl = document.getElementById('mtr-loader-sub');
-                    if (subEl) subEl.textContent = subText;
-                }
-            } else {
-                loaderBox.classList.add('is-hidden');
-            }
-        }
-
-        const rescanBtn = document.getElementById('mtr-rescan-btn');
-        if (rescanBtn) {
-            if (active) {
-                rescanBtn.classList.add('is-scanning');
-                rescanBtn.innerHTML = '<span class="mtr-spinner"></span> Scanning...';
-                rescanBtn.disabled = true;
-            } else {
-                rescanBtn.classList.remove('is-scanning');
-                rescanBtn.textContent = 'Rescan Feed';
-                rescanBtn.disabled = false;
-            }
-        }
-
-        const titleHeader = panel.querySelector('.mtr-title-group h2');
-        if (titleHeader) {
-            let badge = titleHeader.querySelector('.mtr-scanning-badge');
-            if (active) {
-                if (!badge) {
-                    badge = document.createElement('span');
-                    badge.className = 'mtr-scanning-badge';
-                    badge.innerHTML = `
-                        <span class="mtr-radar-beacon">
-                            <span class="mtr-radar-beacon-ring"></span>
-                            <span class="mtr-radar-beacon-dot"></span>
-                        </span>
-                        Radar scanning...
-                    `;
-                    titleHeader.appendChild(badge);
-                }
-            } else if (badge) {
-                badge.remove();
-            }
-        }
-    }
 
     function parseCompactNumber(text) {
         if (!text) return 0;
@@ -102,6 +22,13 @@
         if (match[2] === 'M') return Math.round(num * 1000000);
         if (match[2] === 'K') return Math.round(num * 1000);
         return Math.round(num);
+    }
+
+    function formatCompact(n) {
+        if (!n || n <= 0) return '0';
+        if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+        if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+        return n.toLocaleString();
     }
 
     function getCurrentTagSlug() {
@@ -131,8 +58,7 @@
         let claps = 0;
         let comments = 0;
 
-        const candidates = card.querySelectorAll('button, a, span, div[aria-label], svg[aria-label]');
-        candidates.forEach((el) => {
+        card.querySelectorAll('button, a, span, div[aria-label], svg[aria-label]').forEach((el) => {
             const aria = ((el.getAttribute('aria-label') || '') + ' ' + (el.getAttribute('title') || '')).toLowerCase();
             if (!aria) return;
             const host = el.tagName.toLowerCase() === 'svg' ? (el.closest('button, a, div') || el.parentElement) : el;
@@ -161,16 +87,108 @@
         return { claps, comments };
     }
 
-    function getTrendSignal(story) {
-        if (story.comments >= 30) return '💬 High Debate';
-        if (story.claps >= 1000) return '🔥 Viral Claps';
-        if (story.score >= 200) return '⚡ Rising';
-        return '✨ Active';
+    function extractAuthorAndPubFromCard(card) {
+        let authorName = '';
+        let authorUrl = '';
+        let pubName = '';
+        let pubUrl = '';
+
+        const links = Array.from(card.querySelectorAll('a[href]'));
+        for (const a of links) {
+            const href = (a.getAttribute('href') || '').split('?')[0];
+            const text = (a.textContent || '').trim();
+            if (!text || text.length > 60) continue;
+
+            if (/^\/@[^/]+$/.test(href) || /^https:\/\/medium\.com\/@[^/]+$/.test(href)) {
+                if (!authorName) {
+                    authorName = text;
+                    authorUrl = href.startsWith('http') ? href : `https://medium.com${href}`;
+                }
+            } else if (
+                /^\/[a-z0-9-]+$/i.test(href) &&
+                !['/plans', '/membership', '/about', '/creators', '/jobs'].includes(href) &&
+                !href.startsWith('/tag/')
+            ) {
+                if (!pubName && text !== authorName) {
+                    pubName = text;
+                    pubUrl = `https://medium.com${href}`;
+                }
+            }
+        }
+
+        return { authorName, authorUrl, pubName, pubUrl };
     }
 
-    function extractStoriesFromDOM() {
+    function extractWhoToFollowFromDOM() {
+        const writersMap = new Map();
+        const pubsMap = new Map();
+
+        // Scan DOM elements matching Medium's "Writer · 59K followers" or "Publication · 329K followers"
+        const allNodes = document.querySelectorAll('span, p, div');
+        allNodes.forEach((node) => {
+            if (node.closest('#mtr-radar-panel') || node.children.length > 2) return;
+            const txt = (node.textContent || '').trim();
+            const match = txt.match(/^(Writer|Publication)\s*[·•]\s*([\d.,]+[KM]?)\s+followers?/i);
+            if (!match) return;
+
+            const kind = match[1].toLowerCase();
+            const followers = parseCompactNumber(match[2]);
+
+            // Walk up to find the card containing the entity name & link
+            let container = node.parentElement;
+            let linkEl = null;
+            for (let i = 0; i < 4 && container; i++) {
+                const candidate = Array.from(container.querySelectorAll('a[href]')).find((a) => {
+                    const h = (a.getAttribute('href') || '').split('?')[0];
+                    const t = (a.textContent || '').trim();
+                    return t && t.length > 1 && !/follow/i.test(t) && !h.includes('/tag/');
+                });
+                if (candidate) {
+                    linkEl = candidate;
+                    break;
+                }
+                container = container.parentElement;
+            }
+            if (!linkEl) return;
+
+            const name = linkEl.textContent.trim();
+            const rawHref = linkEl.getAttribute('href').split('?')[0];
+            const url = rawHref.startsWith('http') ? rawHref : `https://medium.com${rawHref}`;
+
+            if (kind === 'publication') {
+                if (!pubsMap.has(name.toLowerCase())) {
+                    pubsMap.set(name.toLowerCase(), {
+                        name,
+                        url,
+                        followers,
+                        storiesInFeed: 0,
+                        totalClaps: 0,
+                        totalComments: 0,
+                        source: 'Top Ranked (Who to follow)'
+                    });
+                }
+            } else {
+                if (!writersMap.has(name.toLowerCase())) {
+                    writersMap.set(name.toLowerCase(), {
+                        name,
+                        url,
+                        followers,
+                        storiesInFeed: 0,
+                        totalClaps: 0,
+                        totalComments: 0,
+                        source: 'Top Writer (Who to follow)'
+                    });
+                }
+            }
+        });
+
+        return { writersMap, pubsMap };
+    }
+
+    function runLiveDOMExtraction() {
         const seenUrls = new Set();
-        const extracted = [];
+        const stories = [];
+        const { writersMap, pubsMap } = extractWhoToFollowFromDOM();
 
         document.querySelectorAll('h2, h3').forEach((heading) => {
             if (heading.closest('#mtr-radar-panel')) return;
@@ -192,11 +210,95 @@
             seenUrls.add(url);
 
             const { claps, comments } = extractMetricsFromCard(card);
+            const { authorName, authorUrl, pubName, pubUrl } = extractAuthorAndPubFromCard(card);
             const score = claps + (comments * 5);
-            extracted.push({ title, url, claps, comments, score });
+
+            stories.push({ title, url, claps, comments, score, authorName, pubName });
+
+            if (authorName) {
+                const key = authorName.toLowerCase();
+                if (!writersMap.has(key)) {
+                    writersMap.set(key, {
+                        name: authorName,
+                        url: authorUrl || url,
+                        followers: 0,
+                        storiesInFeed: 0,
+                        totalClaps: 0,
+                        totalComments: 0,
+                        source: 'Feed Writer'
+                    });
+                }
+                const w = writersMap.get(key);
+                w.storiesInFeed += 1;
+                w.totalClaps += claps;
+                w.totalComments += comments;
+                if (w.source.includes('Who to follow') && w.storiesInFeed > 0) {
+                    w.source = 'Top Writer + Feed';
+                }
+            }
+
+            if (pubName) {
+                const key = pubName.toLowerCase();
+                if (!pubsMap.has(key)) {
+                    pubsMap.set(key, {
+                        name: pubName,
+                        url: pubUrl || url,
+                        followers: 0,
+                        storiesInFeed: 0,
+                        totalClaps: 0,
+                        totalComments: 0,
+                        source: 'Feed Publication'
+                    });
+                }
+                const p = pubsMap.get(key);
+                p.storiesInFeed += 1;
+                p.totalClaps += claps;
+                p.totalComments += comments;
+                if (p.source.includes('Who to follow') && p.storiesInFeed > 0) {
+                    p.source = 'Top Pub + Feed';
+                }
+            }
         });
 
-        return extracted;
+        currentStories = stories;
+        currentWriters = Array.from(writersMap.values());
+        currentPublications = Array.from(pubsMap.values());
+    }
+
+    function getTrendSignal(story) {
+        if (story.comments >= 30) return '💬 High Debate';
+        if (story.claps >= 1000) return '🔥 Viral Claps';
+        if (story.score >= 200) return '⚡ Rising';
+        return '✨ Active';
+    }
+
+    function renderSkeletonLoader() {
+        const kpiRow = document.getElementById('mtr-kpi-row');
+        const listEl = document.getElementById('mtr-story-list');
+        if (!kpiRow || !listEl) return;
+
+        kpiRow.innerHTML = Array(4).fill(0).map((_, i) => `
+            <div class="mtr-kpi ${i === 0 ? 'hero' : i === 1 ? 'mint' : i === 3 ? 'peach' : ''}">
+                <div class="mtr-skeleton-line sm"></div>
+                <div class="mtr-skeleton-line lg"></div>
+            </div>
+        `).join('');
+
+        listEl.innerHTML = Array(4).fill(0).map(() => `
+            <div class="mtr-story-card mtr-skeleton-card">
+                <div class="mtr-story-left">
+                    <div class="mtr-skeleton-circle"></div>
+                    <div style="flex:1;">
+                        <div class="mtr-skeleton-line md"></div>
+                        <div class="mtr-skeleton-line sm" style="margin-top:8px;"></div>
+                    </div>
+                </div>
+                <div class="mtr-story-stats">
+                    <div class="mtr-skeleton-pill"></div>
+                    <div class="mtr-skeleton-pill"></div>
+                </div>
+            </div>
+        `).join('');
     }
 
     function renderPanel() {
@@ -205,70 +307,148 @@
 
         const titleEl = container.querySelector('.mtr-title-group h2');
         if (titleEl) {
-            const badge = titleEl.querySelector('.mtr-scanning-badge');
             titleEl.textContent = `Medium Trending Topics Finder — #${getCurrentTagSlug()}`;
-            if (badge && isScanning) {
-                titleEl.appendChild(badge);
-            }
         }
 
-        const listEl = document.getElementById('mtr-story-list');
-        const loaderBox = document.getElementById('mtr-loader-box');
-
-        if (isScanning && currentStories.length === 0) {
-            if (loaderBox) loaderBox.classList.remove('is-hidden');
-            renderSkeletonCards(listEl, 4);
+        if (isLoading) {
+            renderSkeletonLoader();
             return;
         }
 
         const sortBy = document.getElementById('mtr-sort-select')?.value || 'score';
-        const sorted = [...currentStories].sort((a, b) => b[sortBy] - a[sortBy]);
-
-        const totalClaps = sorted.reduce((sum, s) => sum + s.claps, 0);
-        const totalComments = sorted.reduce((sum, s) => sum + s.comments, 0);
-        const topScore = sorted.length ? sorted[0].score : 0;
-
-        document.getElementById('mtr-kpi-count').textContent = sorted.length;
-        document.getElementById('mtr-kpi-claps').textContent = totalClaps.toLocaleString();
-        document.getElementById('mtr-kpi-comments').textContent = totalComments.toLocaleString();
-        document.getElementById('mtr-kpi-top').textContent = topScore.toLocaleString();
-
+        const kpiRow = document.getElementById('mtr-kpi-row');
+        const listEl = document.getElementById('mtr-story-list');
         listEl.innerHTML = '';
 
-        if (sorted.length === 0) {
-            if (loaderBox && !isScanning) loaderBox.classList.add('is-hidden');
-            listEl.innerHTML = `<div class="mtr-story-card" style="justify-content:center;color:#5c6b73;padding:22px;text-align:center;">
-                <div>
-                    <div style="font-weight:700;color:#1e293b;margin-bottom:4px;">No stories detected yet</div>
-                    Scroll down to load stories in #${getCurrentTagSlug()}, then click <strong>Rescan Feed</strong>.
-                </div>
-            </div>`;
-        } else {
-            // Original data loaded and verified: hide loader smoothly
-            if (loaderBox) loaderBox.classList.add('is-hidden');
+        if (activeTab === 'stories') {
+            const sorted = [...currentStories].sort((a, b) => b[sortBy] - a[sortBy]);
+            const totalClaps = sorted.reduce((s, x) => s + x.claps, 0);
+            const totalComments = sorted.reduce((s, x) => s + x.comments, 0);
+            const topScore = sorted.length ? sorted[0].score : 0;
 
-            sorted.slice(0, 15).forEach((story, idx) => {
-                const card = document.createElement('div');
-                card.className = 'mtr-story-card';
-                card.innerHTML = `
-                    <div class="mtr-story-left">
-                        <div class="mtr-rank-orb">#${idx + 1}</div>
-                        <div style="min-width:0;">
-                            <a class="mtr-story-link" href="${story.url}" target="_blank" rel="noopener noreferrer"></a>
-                            <div class="mtr-story-tags">
-                                <span>${getTrendSignal(story)}</span>
+            kpiRow.innerHTML = `
+                <div class="mtr-kpi hero"><div class="mtr-kpi-label">Top Engagement Score</div><div class="mtr-kpi-val">${topScore.toLocaleString()}</div></div>
+                <div class="mtr-kpi mint"><div class="mtr-kpi-label">Stories Scanned</div><div class="mtr-kpi-val">${sorted.length}</div></div>
+                <div class="mtr-kpi"><div class="mtr-kpi-label">Total Claps</div><div class="mtr-kpi-val">${totalClaps.toLocaleString()}</div></div>
+                <div class="mtr-kpi peach"><div class="mtr-kpi-label">Total Comments</div><div class="mtr-kpi-val">${totalComments.toLocaleString()}</div></div>
+            `;
+
+            if (sorted.length === 0) {
+                listEl.innerHTML = `<div class="mtr-story-card" style="justify-content:center;color:#5c6b73;">No stories detected yet. Scroll down on Medium, then click <strong>Rescan Feed</strong>.</div>`;
+            } else {
+                sorted.slice(0, 20).forEach((story, idx) => {
+                    const card = document.createElement('div');
+                    card.className = 'mtr-story-card';
+                    card.innerHTML = `
+                        <div class="mtr-story-left">
+                            <div class="mtr-rank-orb">#${idx + 1}</div>
+                            <div style="min-width:0;">
+                                <a class="mtr-story-link" href="${story.url}" target="_blank" rel="noopener noreferrer"></a>
+                                <div class="mtr-story-tags">
+                                    <span>${getTrendSignal(story)}</span>
+                                    ${story.pubName ? `<span>· ${story.pubName}</span>` : ''}
+                                    ${story.authorName ? `<span>· by ${story.authorName}</span>` : ''}
+                                </div>
                             </div>
                         </div>
-                    </div>
-                    <div class="mtr-story-stats">
-                        <span class="mtr-stat-pill">👏 ${story.claps.toLocaleString()}</span>
-                        <span class="mtr-stat-pill">💬 ${story.comments.toLocaleString()}</span>
-                        <span class="mtr-stat-pill score">⚡ ${story.score.toLocaleString()}</span>
-                    </div>
-                `;
-                card.querySelector('.mtr-story-link').textContent = story.title;
-                listEl.appendChild(card);
+                        <div class="mtr-story-stats">
+                            <span class="mtr-stat-pill">👏 ${story.claps.toLocaleString()}</span>
+                            <span class="mtr-stat-pill">💬 ${story.comments.toLocaleString()}</span>
+                            <span class="mtr-stat-pill score">⚡ ${story.score.toLocaleString()}</span>
+                        </div>
+                    `;
+                    card.querySelector('.mtr-story-link').textContent = story.title;
+                    listEl.appendChild(card);
+                });
+            }
+        } else if (activeTab === 'publications') {
+            const sorted = [...currentPublications].sort((a, b) => {
+                if (sortBy === 'claps') return b.totalClaps - a.totalClaps;
+                if (sortBy === 'comments') return b.totalComments - a.totalComments;
+                return (b.followers + b.totalClaps * 10) - (a.followers + a.totalClaps * 10);
             });
+            const totalFollowers = sorted.reduce((s, x) => s + x.followers, 0);
+            const totalClaps = sorted.reduce((s, x) => s + x.totalClaps, 0);
+            const topName = sorted.length ? sorted[0].name : 'None';
+
+            kpiRow.innerHTML = `
+                <div class="mtr-kpi hero"><div class="mtr-kpi-label">Top Publication</div><div class="mtr-kpi-val" style="font-size:19px;">${topName}</div></div>
+                <div class="mtr-kpi mint"><div class="mtr-kpi-label">Publications Found</div><div class="mtr-kpi-val">${sorted.length}</div></div>
+                <div class="mtr-kpi"><div class="mtr-kpi-label">Visible Followers</div><div class="mtr-kpi-val">${formatCompact(totalFollowers)}</div></div>
+                <div class="mtr-kpi peach"><div class="mtr-kpi-label">Feed Claps</div><div class="mtr-kpi-val">${formatCompact(totalClaps)}</div></div>
+            `;
+
+            if (sorted.length === 0) {
+                listEl.innerHTML = `<div class="mtr-story-card" style="justify-content:center;color:#5c6b73;">No publications found yet. Scroll down or open a Medium tag page with "Who to follow".</div>`;
+            } else {
+                sorted.forEach((pub, idx) => {
+                    const card = document.createElement('div');
+                    card.className = 'mtr-story-card';
+                    card.innerHTML = `
+                        <div class="mtr-story-left">
+                            <div class="mtr-rank-orb">#${idx + 1}</div>
+                            <div style="min-width:0;">
+                                <a class="mtr-story-link" href="${pub.url}" target="_blank" rel="noopener noreferrer"></a>
+                                <div class="mtr-story-tags">
+                                    <span>${pub.source}</span>
+                                    <span>· ${pub.storiesInFeed} stories in feed</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mtr-story-stats">
+                            ${pub.followers > 0 ? `<span class="mtr-stat-pill">👥 ${formatCompact(pub.followers)}</span>` : ''}
+                            <span class="mtr-stat-pill">👏 ${formatCompact(pub.totalClaps)}</span>
+                            <span class="mtr-stat-pill score">💬 ${pub.totalComments}</span>
+                        </div>
+                    `;
+                    card.querySelector('.mtr-story-link').textContent = pub.name;
+                    listEl.appendChild(card);
+                });
+            }
+        } else if (activeTab === 'writers') {
+            const sorted = [...currentWriters].sort((a, b) => {
+                if (sortBy === 'claps') return b.totalClaps - a.totalClaps;
+                if (sortBy === 'comments') return b.totalComments - a.totalComments;
+                return (b.followers + b.totalClaps * 10 + b.totalComments * 50) - (a.followers + a.totalClaps * 10 + a.totalComments * 50);
+            });
+            const topWritersCount = sorted.filter(w => w.followers > 0).length;
+            const totalClaps = sorted.reduce((s, x) => s + x.totalClaps, 0);
+            const topName = sorted.length ? sorted[0].name : 'None';
+
+            kpiRow.innerHTML = `
+                <div class="mtr-kpi hero"><div class="mtr-kpi-label">Top Writer</div><div class="mtr-kpi-val" style="font-size:19px;">${topName}</div></div>
+                <div class="mtr-kpi mint"><div class="mtr-kpi-label">Writers Found</div><div class="mtr-kpi-val">${sorted.length}</div></div>
+                <div class="mtr-kpi"><div class="mtr-kpi-label">Who-to-Follow Writers</div><div class="mtr-kpi-val">${topWritersCount}</div></div>
+                <div class="mtr-kpi peach"><div class="mtr-kpi-label">Writer Claps</div><div class="mtr-kpi-val">${formatCompact(totalClaps)}</div></div>
+            `;
+
+            if (sorted.length === 0) {
+                listEl.innerHTML = `<div class="mtr-story-card" style="justify-content:center;color:#5c6b73;">No writers detected yet. Scroll down and click <strong>Rescan Feed</strong>.</div>`;
+            } else {
+                sorted.forEach((w, idx) => {
+                    const card = document.createElement('div');
+                    card.className = 'mtr-story-card';
+                    card.innerHTML = `
+                        <div class="mtr-story-left">
+                            <div class="mtr-rank-orb">#${idx + 1}</div>
+                            <div style="min-width:0;">
+                                <a class="mtr-story-link" href="${w.url}" target="_blank" rel="noopener noreferrer"></a>
+                                <div class="mtr-story-tags">
+                                    <span>${w.source}</span>
+                                    <span>· ${w.storiesInFeed} stories in feed</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mtr-story-stats">
+                            ${w.followers > 0 ? `<span class="mtr-stat-pill">👥 ${formatCompact(w.followers)}</span>` : ''}
+                            <span class="mtr-stat-pill">👏 ${formatCompact(w.totalClaps)}</span>
+                            <span class="mtr-stat-pill score">💬 ${w.totalComments}</span>
+                        </div>
+                    `;
+                    card.querySelector('.mtr-story-link').textContent = w.name;
+                    listEl.appendChild(card);
+                });
+            }
         }
 
         try {
@@ -277,56 +457,48 @@
                     mtrLatestScan: {
                         tag: getCurrentTagSlug(),
                         timestamp: Date.now(),
-                        stories: sorted.slice(0, 10)
+                        stories: [...currentStories].sort((a, b) => b.score - a.score).slice(0, 10)
                     }
                 });
             }
         } catch (_) {}
     }
 
-    function runScan(isManual = false) {
-        const tag = getCurrentTagSlug();
-        const listEl = document.getElementById('mtr-story-list');
-
-        setScanningUI(
-            true,
-            isManual ? `Rescanning #${tag} Feed...` : `Analyzing & Ranking #${tag} Stories...`,
-            isManual ? 'Recalculating claps, responses, and engagement rankings...' : 'Reading claps, responses, and calculating engagement velocity...'
-        );
-
-        if (isManual && listEl) {
-            renderSkeletonCards(listEl, 4);
-        }
-
-        const executeExtract = () => {
-            currentStories = extractStoriesFromDOM();
-            setScanningUI(false);
+    function runScan(showLoader = true) {
+        if (showLoader) {
+            isLoading = true;
             renderPanel();
-        };
-
-        if (isManual) {
-            setTimeout(executeExtract, 600);
-        } else {
-            executeExtract();
         }
+        setTimeout(() => {
+            runLiveDOMExtraction();
+            isLoading = false;
+            renderPanel();
+        }, showLoader ? 550 : 50);
     }
 
     function scheduleAutoScan() {
         clearTimeout(rescanTimer);
-        rescanTimer = setTimeout(runScan, 800);
+        rescanTimer = setTimeout(() => runScan(false), 700);
     }
 
     function exportCSV() {
-        const rows = [['Rank', 'Title', 'Claps', 'Comments', 'Engagement Score', 'Signal', 'URL']];
-        currentStories.forEach((s, i) => {
-            rows.push([i + 1, `"${s.title.replace(/"/g, '""')}"`, s.claps, s.comments, s.score, getTrendSignal(s), s.url]);
-        });
+        let rows = [];
+        if (activeTab === 'stories') {
+            rows = [['Rank', 'Title', 'Claps', 'Comments', 'Score', 'Author', 'Publication', 'URL']];
+            currentStories.forEach((s, i) => rows.push([i + 1, `"${s.title.replace(/"/g, '""')}"`, s.claps, s.comments, s.score, `"${s.authorName}"`, `"${s.pubName}"`, s.url]));
+        } else if (activeTab === 'publications') {
+            rows = [['Rank', 'Publication', 'Followers', 'Stories in Feed', 'Total Claps', 'Total Comments', 'Source', 'URL']];
+            currentPublications.forEach((p, i) => rows.push([i + 1, `"${p.name.replace(/"/g, '""')}"`, p.followers, p.storiesInFeed, p.totalClaps, p.totalComments, `"${p.source}"`, p.url]));
+        } else {
+            rows = [['Rank', 'Writer', 'Followers', 'Stories in Feed', 'Total Claps', 'Total Comments', 'Source', 'URL']];
+            currentWriters.forEach((w, i) => rows.push([i + 1, `"${w.name.replace(/"/g, '""')}"`, w.followers, w.storiesInFeed, w.totalClaps, w.totalComments, `"${w.source}"`, w.url]));
+        }
         const csv = rows.map(r => r.join(',')).join('\n');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `medium-trending-${getCurrentTagSlug()}.csv`;
+        a.download = `medium-${activeTab}-${getCurrentTagSlug()}.csv`;
         a.click();
         URL.revokeObjectURL(url);
     }
@@ -343,12 +515,12 @@
                     <div class="mtr-3d-orb"></div>
                     <div class="mtr-title-group">
                         <h2>Medium Trending Topics Finder — #${getCurrentTagSlug()}</h2>
-                        <p>Ranked by claps, comments, and engagement velocity</p>
+                        <p>Live DOM scan · Stories, Top Publications &amp; Top Writers</p>
                     </div>
                 </div>
                 <div class="mtr-controls">
                     <select class="mtr-select" id="mtr-sort-select">
-                        <option value="score">Sort: Engagement Score</option>
+                        <option value="score">Sort: Primary Score</option>
                         <option value="claps">Sort: Most Claps</option>
                         <option value="comments">Sort: Most Comments</option>
                     </select>
@@ -356,75 +528,34 @@
                     <button class="mtr-btn mtr-btn-primary" id="mtr-export-btn">Export CSV</button>
                 </div>
             </div>
-            <div class="mtr-kpi-row">
-                <div class="mtr-kpi hero">
-                    <div class="mtr-kpi-label">Top Engagement Score</div>
-                    <div class="mtr-kpi-val" id="mtr-kpi-top">0</div>
-                </div>
-                <div class="mtr-kpi mint">
-                    <div class="mtr-kpi-label">Stories Scanned</div>
-                    <div class="mtr-kpi-val" id="mtr-kpi-count">0</div>
-                </div>
-                <div class="mtr-kpi">
-                    <div class="mtr-kpi-label">Total Claps</div>
-                    <div class="mtr-kpi-val" id="mtr-kpi-claps">0</div>
-                </div>
-                <div class="mtr-kpi peach">
-                    <div class="mtr-kpi-label">Total Comments</div>
-                    <div class="mtr-kpi-val" id="mtr-kpi-comments">0</div>
-                </div>
+            <div class="mtr-tabs">
+                <button class="mtr-tab-btn active" data-tab="stories">🔥 Trending Stories</button>
+                <button class="mtr-tab-btn" data-tab="publications">🏛️ Top Publications</button>
+                <button class="mtr-tab-btn" data-tab="writers">✍️ Top Writers</button>
             </div>
-            <div class="mtr-loader-box" id="mtr-loader-box">
-                <div class="mtr-loader-top">
-                    <div class="mtr-loader-orb-wrap">
-                        <div class="mtr-loader-spinner-ring"></div>
-                    </div>
-                    <div class="mtr-loader-info">
-                        <div class="mtr-loader-title" id="mtr-loader-title">
-                            <span>Analyzing & Ranking Stories...</span>
-                            <span class="mtr-radar-beacon" style="display:inline-flex;">
-                                <span class="mtr-radar-beacon-ring"></span>
-                                <span class="mtr-radar-beacon-dot"></span>
-                            </span>
-                        </div>
-                        <p class="mtr-loader-sub" id="mtr-loader-sub">Reading claps, responses, and calculating engagement velocity...</p>
-                    </div>
-                </div>
-                <div class="mtr-loader-track">
-                    <div class="mtr-loader-bar"></div>
-                </div>
-            </div>
+            <div class="mtr-kpi-row" id="mtr-kpi-row"></div>
             <div class="mtr-story-list" id="mtr-story-list"></div>
         `;
 
         main.insertBefore(panel, main.firstChild);
 
+        panel.querySelectorAll('.mtr-tab-btn').forEach(btn => {
+            btn.addEventListener('click', () => {
+                activeTab = btn.getAttribute('data-tab');
+                panel.querySelectorAll('.mtr-tab-btn').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                renderPanel();
+            });
+        });
+
         document.getElementById('mtr-sort-select').addEventListener('change', renderPanel);
         document.getElementById('mtr-rescan-btn').addEventListener('click', () => runScan(true));
         document.getElementById('mtr-export-btn').addEventListener('click', exportCSV);
 
-        const listEl = document.getElementById('mtr-story-list');
-        const tag = getCurrentTagSlug();
-        setScanningUI(true, `Analyzing & Ranking #${tag} Stories...`, 'Reading claps, responses, and calculating engagement velocity...');
-        renderSkeletonCards(listEl, 4);
-
-        let initialAttempts = 0;
-        const maxInitialAttempts = 6;
-
-        function attemptHydrationScan() {
-            initialAttempts++;
-            const extracted = extractStoriesFromDOM();
-            if (extracted.length > 0 || initialAttempts >= maxInitialAttempts) {
-                currentStories = extracted;
-                setScanningUI(false);
-                renderPanel();
-            } else {
-                setScanningUI(true, `Scanning #${getCurrentTagSlug()} Feed...`, 'Waiting for Medium stories to load & calculating rankings...');
-                setTimeout(attemptHydrationScan, 600);
-            }
-        }
-
-        setTimeout(attemptHydrationScan, 400);
+        // Start in loading state while Medium hydrates its SPA feed
+        renderPanel();
+        setTimeout(() => runScan(true), 1200);
+        setTimeout(() => runScan(false), 2800);
 
         const observer = new MutationObserver((mutations) => {
             const addedOutsidePanel = mutations.some(m => !m.target.closest?.('#mtr-radar-panel') && m.addedNodes.length > 0);
@@ -435,10 +566,10 @@
         setInterval(() => {
             if (window.location.href !== lastUrl) {
                 lastUrl = window.location.href;
-                scheduleAutoScan();
+                runScan(true);
             }
         }, 1000);
     }
 
-    setTimeout(injectRadarPanel, 1200);
+    setTimeout(injectRadarPanel, 900);
 })();
