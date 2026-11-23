@@ -1,27 +1,31 @@
-# Medium Trending Radar 🚀
+# Medium Trending Topics Finder 🚀
 
-Discover trending Medium articles, high-performing stories, and market opportunity topics ranked by **Claps**, **Comments**, and **Engagement Velocity**—built with a **tactile Soft 3D Claymorphic UI** and running **100% locally** in your browser with zero external servers or trackers.
+Discover trending Medium articles, top publications, and top writers ranked by **Claps**, **Comments**, **Followers**, and **Engagement Velocity**—built with a **tactile Soft 3D Claymorphic UI** and running **100% locally** in your browser with zero external servers or trackers.
 
 ---
 
 ## ✨ Features at a Glance
 
-- **🎯 Real-Time In-Page Analytics Overlay**: Automatically injects a tactile 3D Bento dashboard on any Medium tag page (`medium.com/tag/*`) and the homepage feed.
-- **⚡ Smart Engagement Scoring Algorithm**:
-  $$\text{Engagement Score} = \text{Claps} + (\text{Comments} \times 5)$$
-  *Comments are weighted 5× heavier than claps to highlight genuine conversation and high-resonance topics.*
+- **🎯 3-in-1 In-Page Intelligence Overlay**: Automatically injects a tactile 3D Bento dashboard on any Medium tag page (`medium.com/tag/*`) and the homepage feed.
+  - 🔥 **Trending Stories**: Ranks stories by claps, comments, and engagement velocity.
+  - 🏛️ **Top Publications**: Surfaces publication leaders with follower counts and active feed story presence.
+  - ✍️ **Top Writers**: Tracks top topic authors from both the sidebar and live feed aggregation.
+- **⚡ Dual Live Data Pipeline**:
+  - **Medium "Who to follow" Sidebar**: Scans verified topic badges (e.g. `Writer · 59K followers` or `Publication · 329K followers`) to capture authentic audience reach.
+  - **Feed Story Aggregation**: Inspects every loaded card to sum `storiesInFeed`, `totalClaps`, and `totalComments`.
+  - **Smart Merge**: Entities found in both are merged into hybrid badges: `Top Writer + Feed` and `Top Pub + Feed`.
+- **📐 3 Specialized Ranking Formulas**:
+  - **Stories**: $\text{Score} = \text{Claps} + (\text{Comments} \times 5)$
+  - **Top Publications**: $\text{Score} = \text{Followers} + (\text{Total Feed Claps} \times 10)$
+  - **Top Writers**: $\text{Score} = \text{Followers} + (\text{Total Feed Claps} \times 10) + (\text{Total Feed Comments} \times 50)$
 - **🏷️ Automated Trend Signals**: Identifies story performance tiers on the fly:
   - 💬 **High Debate** ($\ge 30$ responses)
   - 🔥 **Viral Claps** ($\ge 1{,}000$ claps)
   - ⚡ **Rising** ($\ge 200$ engagement score)
   - ✨ **Active** (consistent reader momentum)
 - **🎨 Soft 3D Tactile Claymorphism UI**: Custom-designed aesthetic with pastel clay tones (cream, mint, teal, peach), inset lighting, 3D concentric orbs, and soft pill badges.
-- **📡 Coordinated Radar & Shimmer Loaders**:
-  - Live pulsing radar beacon indicator in the panel header (`Radar scanning...`).
-  - Tactile depressed button state with spinner feedback during manual scans.
-  - Smooth claymorphic skeleton cards during Medium's async GraphQL feed hydration to prevent layout shifts.
-- **📊 1-Click CSV Data Export**: Download structured `.csv` reports with Rank, Title, Claps, Comments, Engagement Score, Trend Signal, and Story URLs for research, content strategy, or lead generation.
-- **🎛️ Dynamic In-Feed Sorting**: Re-rank loaded articles instantly by **Engagement Score**, **Most Claps**, or **Most Comments**.
+- **📊 1-Click Tab-Aware CSV Data Export**: Download structured `.csv` reports for Stories, Publications, or Writers for research, publication pitching, or content strategy.
+- **🎛️ Dynamic In-Feed Sorting**: Re-rank loaded entities instantly by **Primary Score**, **Most Claps**, or **Most Comments**.
 - **🔍 Quick-Jump Extension Popup**:
   - Direct search bar to jump to any Medium topic slug.
   - Instant tag chips (`technology`, `artificial-intelligence`, `programming`, `python`, `writing`).
@@ -34,17 +38,18 @@ Discover trending Medium articles, high-performing stories, and market opportuni
 
 ```
 ┌────────────────────────────────────────────────────────────────────────┐
-│  🟢 Medium Trending Radar — #artificial-intelligence    [Radar scanning]│
-│  Ranked by claps, comments, and engagement velocity                    │
+│  🟢 Medium Trending Topics Finder — #artificial-intelligence          │
+│  Live DOM scan · Stories, Top Publications & Top Writers               │
 │                                                                        │
-│  [ Sort: Engagement Score ▼ ]  [ ↻ Rescan Feed ]  [ 📥 Export CSV ]     │
+│  [ 🔥 Trending Stories ]  [ 🏛️ Top Publications ]  [ ✍️ Top Writers ]   │
+│  [ Sort: Primary Score ▼ ]     [ ↻ Rescan Feed ]    [ 📥 Export CSV ]  │
 ├─────────────────┬─────────────────┬──────────────────┬─────────────────┤
-│ TOP SCORE       │ STORIES SCANNED │ TOTAL CLAPS      │ TOTAL COMMENTS  │
+│ TOP SCORE / PUB │ TOTAL SCANNED   │ TOTAL CLAPS      │ TOTAL COMMENTS  │
 │ 4,820           │ 24              │ 18,340           │ 596             │
 ├─────────────────┴─────────────────┴──────────────────┴─────────────────┤
 │  #1  The Future of Autonomous Agents       [🔥 Viral Claps]  👏 2.4K 💬 148 ⚡ 3,140 │
-│  #2  Why Clean Architecture Still Matters [💬 High Debate]   👏 890  💬 62  ⚡ 1,200 │
-│  #3  Mastering PyTorch in 2026            [⚡ Rising]        👏 420  💬 18  ⚡ 510   │
+│  #2  Towards Data Science                  [Top Pub + Feed]  👥 690K 👏 6.5K 💬 341  │
+│  #3  Cassie Kozyrkov                       [Top Writer+Feed] 👥 120K 👏 3.4K 💬 184  │
 └────────────────────────────────────────────────────────────────────────┘
 ```
 
